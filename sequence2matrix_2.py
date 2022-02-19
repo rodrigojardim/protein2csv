@@ -10,11 +10,16 @@ Z-class
 
 Parametros: 
 	Entrada: 	- arquivo multifasta
-				- codir organismo (0 para mamiferos e 1 para bacterias)
+				- codigo da classe (0, 1, 2, ...)
 	Saida:		- <STDOUT> aqruivo csv
 
 Rodrigo Jardim
 Maio 2021
+
+Atualizacoes:
+    Fev 2022: inclusao do size (tamanho da sequencia) 
+              para ponderar os valores da matriz
+
 '''
 import sys
 from Bio import SeqIO
@@ -134,6 +139,7 @@ for letter in aminoacids:
 # Preenchendo a matriz
 for sequence in SeqIO.parse(strFileIn, "fasta"):
 	seq = str(sequence.seq).lower()
+	size = len(seq)
 	
 	# Calculando a frequencia de cada aminoacido
 	for letter in seq:
@@ -151,12 +157,12 @@ for sequence in SeqIO.parse(strFileIn, "fasta"):
 		
 		# Inclui uma coluna com o valor ponderado de cada aminoacido
 		# pelo seu peso molecular (dictAminoacids)
-		line.append(str(dictAminoacids[letter] * frequence[letter]))
+		line.append(str(dictAminoacids[letter] * frequence[letter] / size))
 		
 		# Inclui 3 colunas com os descritores da tabela Z, ponderado
 		# pela frequencia de cada aminoacido
 		for z in dictZclass[letter]:
-			line.append(str(z * frequence[letter]))
+			line.append(str(z * frequence[letter] / size))
 
 		output['descriptors'][letter].append(line)
 	
