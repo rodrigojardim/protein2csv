@@ -9,16 +9,18 @@ a frequencia de cada aminoacido e os descritores
 Z-class
 
 Parametros: 
-	Entrada: 	- arquivo multifasta
-				- codigo da classe (0, 1, 2, ...)
-	Saida:		- <STDOUT> aqruivo csv
+    Entrada:    - arquivo multifasta
+                - codigo da classe (0, 1, 2, ...). Se X, nao inclui essa coluna
+    Saida:      - <STDOUT> aqruivo csv
 
 Rodrigo Jardim
 Maio 2021
 
 Atualizacoes:
-    Fev 2022: inclusao do size (tamanho da sequencia) 
+    Fev 2022: - inclusao do size (tamanho da sequencia) 
               para ponderar os valores da matriz
+              - inclusao do tipo de organismo X para nao gerar
+              a coluna da classe do organismo
 
 '''
 import sys
@@ -28,53 +30,58 @@ from Bio import SeqIO
 # Aminoacidos com seus pesos moleculares e contagem de átomos (PUBCHEM)
 
 #PubCHEM data
-#Residue 	3-letter 	1-letter 	Molecular weight Heavy Atom Count
+#Residue    3-letter    1-letter    Molecular weight Heavy Atom Count
 #https://pubchem.ncbi.nlm.nih.gov/compound/Glycine
-#Glycine 	Gly 	G 	C2H3NO 	75.07 	5
+#Glycine    Gly     G   C2H3NO  75.07   5
 #https://pubchem.ncbi.nlm.nih.gov/compound/Alanine
-#Alanine 	Ala 	A 	C3H5NO 	89.09 	6
+#Alanine    Ala     A   C3H5NO  89.09   6
 #https://pubchem.ncbi.nlm.nih.gov/compound/Serine
-#Serine 	Ser 	S 	C3H5NO2 	105.09 	7
+#Serine     Ser     S   C3H5NO2     105.09  7
 #https://pubchem.ncbi.nlm.nih.gov/compound/Proline
-#Proline 	Pro 	P 	C5H7NO 	115.13 	8
+#Proline    Pro     P   C5H7NO  115.13  8
 #https://pubchem.ncbi.nlm.nih.gov/compound/Valine
-#Valine 	Val 	V 	C5H9NO 	117.15 	8
+#Valine     Val     V   C5H9NO  117.15  8
 #https://pubchem.ncbi.nlm.nih.gov/compound/l-Threonine
-#Threonine 	Thr 	T 	C4H7NO2 	119.12 	8
+#Threonine  Thr     T   C4H7NO2     119.12  8
 #https://pubchem.ncbi.nlm.nih.gov/compound/Cysteine
-#Cysteine 	Cys 	C 	C3H5NOS 	121.16 	7
+#Cysteine   Cys     C   C3H5NOS     121.16  7
 #https://pubchem.ncbi.nlm.nih.gov/compound/l-Isoleucine
-#Isoleucine 	Ile 	I 	C6H11NO 	131.17 	9
+#Isoleucine     Ile     I   C6H11NO     131.17  9
 #https://pubchem.ncbi.nlm.nih.gov/compound/Leucine
-#Leucine 	Leu 	L 	C6H11NO 	131.17 	9
+#Leucine    Leu     L   C6H11NO     131.17  9
 #https://pubchem.ncbi.nlm.nih.gov/compound/Asparagine
-#Asparagine 	Asn 	N 	C4H6N2O2 	132.12 	9
+#Asparagine     Asn     N   C4H6N2O2    132.12  9
 #https://pubchem.ncbi.nlm.nih.gov/compound/Aspartic-acid
-#Aspartic acid 	Asp 	D 	C4H5NO3 	133.10 	9
+#Aspartic acid  Asp     D   C4H5NO3     133.10  9
 #https://pubchem.ncbi.nlm.nih.gov/compound/Glutamine
-#Glutamine 	Gln 	Q 	C5H8N2O2 	146.14 	10
+#Glutamine  Gln     Q   C5H8N2O2    146.14  10
 #https://pubchem.ncbi.nlm.nih.gov/compound/Lysine
-#Lysine 	Lys 	K 	C6H12N2O 	146.19 	10
+#Lysine     Lys     K   C6H12N2O    146.19  10
 #https://pubchem.ncbi.nlm.nih.gov/compound/Glutamic-acid
-#Glutamic acid 	Glu 	E 	C5H7NO3 	147.13 	10
+#Glutamic acid  Glu     E   C5H7NO3     147.13  10
 #https://pubchem.ncbi.nlm.nih.gov/compound/Methionine
-#Methionine 	Met 	M 	C5H9NOS 	149.29 	9
+#Methionine     Met     M   C5H9NOS     149.29  9
 #https://pubchem.ncbi.nlm.nih.gov/compound/Histidine
-#Histidine 	His 	H 	C6H7N3O 	155.11 	11
+#Histidine  His     H   C6H7N3O     155.11  11
 #https://pubchem.ncbi.nlm.nih.gov/compound/Phenylalanine
-#Phenylalanine 	Phe 	F 	C9H9NO 	165.19 	12
+#Phenylalanine  Phe     F   C9H9NO  165.19  12
 #https://pubchem.ncbi.nlm.nih.gov/compound/Arginine
-#Arginine 	Arg 	R 	C6H12N4O 	174.20 	12
+#Arginine   Arg     R   C6H12N4O    174.20  12
 #https://pubchem.ncbi.nlm.nih.gov/compound/Tyrosine
-#Tyrosine 	Tyr 	Y 	C9H9NO2 	181.19 	13
+#Tyrosine   Tyr     Y   C9H9NO2     181.19  13
 #https://pubchem.ncbi.nlm.nih.gov/compound/Tryptophan
-#Tryptophan 	Trp 	W 	C11H10N2O 	204.22 	15 
+#Tryptophan     Trp     W   C11H10N2O   204.22  15 
 
 # Molecular weight
 dictAminoacids = {'g':75.07,'a':89.09, 's':105.09, 'p':115.13, 'v':117.15, 't':119.12, 'c':121.16,'i':131.17, 'l':131.17, 'n':132.12, 'd':133.10, 'q':146.14,'k': 146.19,'e':147.13, 'm':149.29, 'h':155.11, 'f':165.19, 'r':174.20, 'y':181.19, 'w':204.22, 'x':0, 'u':0, 'b':0}
 
 #Heavy Atom Count
 dictAminoacids_heavy_atom_count = {'g':5,'a':6, 's':7, 'p':8, 'v':8, 't':8, 'c':7,'i':9, 'l':9, 'n':9, 'd':9, 'q':10, 'k': 10, 'e':10, 'm':9, 'h':11, 'f':12, 'r':12, 'y':13, 'w':15, 'x':0, 'u':0, 'b':0}
+
+dictAminoacids_XLogP3 = {'g':-3.2,'a':-3, 's':-3.1, 'p':-2.5, 'v':-2.3, 't':-2.9, 'c':-2.5,'i':-1.7, 'l':-1.5, 'n':-3.4, 'd':-2.8, 'q':-3.1, 'k': -3, 'e':-3.7, 'm':-1.9, 'h':-3.2, 'f':-1.5, 'r':-4.2, 'y':-2.3, 'w':-1.1, 'x':0, 'u':0, 'b':0}
+
+dictAminoacids_Complexity = {'g':42.9,'a':61.8, 's':72.6, 'p':103, 'v':90.4, 't':93.3, 'c':75.3,'i':103, 'l':101, 'n':134, 'd':133, 'q':146, 'k': 106, 'e':145, 'm':97, 'h':151, 'f':153, 'r':176, 'y':176, 'w':245, 'x':0, 'u':0, 'b':0}
+
 
 # Aminoacidos com suas massas medias (Average mass)
 # http://www2.riken.jp/BiomolChar/Aminoacidmolecularmasses.htm
@@ -83,26 +90,26 @@ dictAminoacids_heavy_atom_count = {'g':5,'a':6, 's':7, 'p':8, 'v':8, 't':8, 'c':
 # Colunas da Zclass: ‘hydrophobicity’, ‘bulk of side chain’, ‘electronic properties’ 
 # Artigo na pasta docs
 dictZclass = {
-	'f':[-4.92,1.3,0.45],
-	'w':[-4.75,3.65,0.85],
-	'i':[-4.44,-1.68,-1.03],
-	'l':[-4.19,-1.03,-0.98],
-	'v':[-2.69,-2.53,-1.29],
-	'm':[-2.49,-0.27,-0.41],
-	'y':[-1.39,2.32,0.01],
-	'p':[-1.22,0.88,2.23],
-	'a':[0.07,-1.73,0.09],
-	'c':[0.71,-0.97,4.13],
-	't':[0.92,-2.09,-1.4],
-	's':[1.96,-1.63,0.57],
-	'q':[2.19,0.53,-1.14],
-	'g':[2.23,-5.36,0.3],
-	'h':[2.41,1.74,1.11],
-	'k':[2.84,1.41,-3.14],
-	'r':[2.88,2.52,-3.44],
-	'e':[3.08,0.039,-0.07],
-	'n':[3.22,1.45,0.84],
-	'd':[3.64,1.13,2.36]
+    'f':[-4.92,1.3,0.45],
+    'w':[-4.75,3.65,0.85],
+    'i':[-4.44,-1.68,-1.03],
+    'l':[-4.19,-1.03,-0.98],
+    'v':[-2.69,-2.53,-1.29],
+    'm':[-2.49,-0.27,-0.41],
+    'y':[-1.39,2.32,0.01],
+    'p':[-1.22,0.88,2.23],
+    'a':[0.07,-1.73,0.09],
+    'c':[0.71,-0.97,4.13],
+    't':[0.92,-2.09,-1.4],
+    's':[1.96,-1.63,0.57],
+    'q':[2.19,0.53,-1.14],
+    'g':[2.23,-5.36,0.3],
+    'h':[2.41,1.74,1.11],
+    'k':[2.84,1.41,-3.14],
+    'r':[2.88,2.52,-3.44],
+    'e':[3.08,0.039,-0.07],
+    'n':[3.22,1.45,0.84],
+    'd':[3.64,1.13,2.36]
 }
 
 aminoacids = ['g','a','l','m','f','w','k','q','e','s','p','v','i','c','y','h','r','n','d','t']
@@ -116,13 +123,13 @@ import sys
 import hashlib
 from Bio import SeqIO
 
-strFileIn = sys.argv[1]		# Arquivo multifasta em aminoacido
+strFileIn = sys.argv[1]     # Arquivo multifasta em aminoacido
 strOrganism = sys.argv[2]   # 0 para bacteria e 1 para mamifero
 
 # Zerando a frequencia de cada aminoacido
 frequence = {}
 for letter in aminoacids:
-	frequence[letter] = 0
+    frequence[letter] = 0
 
 # Montando a saida
 output = {}
@@ -132,53 +139,67 @@ output['descriptors'] = {}
 # Cabecalho com as letras dos aminoacidos
 strCSV = ''
 for letter in aminoacids:
-	strCSV+=letter
-	strCSV+=","
-	output['descriptors'][letter] = []
+    strCSV+=letter
+    strCSV+=","
+    output['descriptors'][letter] = []
 
 # Preenchendo a matriz
 for sequence in SeqIO.parse(strFileIn, "fasta"):
-	seq = str(sequence.seq).lower()
-	size = len(seq)
-	
-	# Calculando a frequencia de cada aminoacido
-	for letter in seq:
-		try:
-			frequence[letter]+=1
-		except:
-			pass
+    seq = str(sequence.seq).lower()
+    size = len(seq)
+    
+    # Calculando a frequencia de cada aminoacido
+    for letter in seq:
+        try:
+            frequence[letter]+=1
+        except:
+            pass
 
-	# Calculando o hash para a sequencia
-	hash = hashlib.md5(seq.encode()).hexdigest()
+    # Calculando o hash para a sequencia
+    hash = hashlib.md5(seq.encode()).hexdigest()
 
-	# Monta vetor de saida
-	for letter in aminoacids:
-		line = []
-		
-		# Inclui uma coluna com o valor ponderado de cada aminoacido
-		# pelo seu peso molecular (dictAminoacids)
-		line.append(str(dictAminoacids[letter] * frequence[letter] / size))
-		
-		# Inclui 3 colunas com os descritores da tabela Z, ponderado
-		# pela frequencia de cada aminoacido
-		for z in dictZclass[letter]:
-			line.append(str(z * frequence[letter] / size))
+    # Monta vetor de saida
+    for letter in aminoacids:
+        line = []
+        
+        # Inclui uma coluna com o valor ponderado de cada aminoacido
+        # pelo seu peso molecular (dictAminoacids) dividido pelo
+        # tamanho da sequencia
+        line.append(str(dictAminoacids[letter] * frequence[letter] / size))
+        
+        # Inclui 3 colunas com os descritores da tabela Z, ponderado
+        # pela frequencia de cada aminoacido dividido pelo tamanho
+        # da sequencia
+        for z in dictZclass[letter]:
+            line.append(str(z * frequence[letter] / size))
 
-		output['descriptors'][letter].append(line)
-	
-	output['hash'].append(hash)
+        line.append(str(dictAminoacids_heavy_atom_count[letter] * frequence[letter] / size))
+
+        # Inclui uma coluna com o valor do XLogP3
+        line.append(str(dictAminoacids_XLogP3[letter] * frequence[letter] / size))
+
+        # Inclui uma coluna com o valor da Complexity
+        line.append(str(dictAminoacids_Complexity[letter] * frequence[letter] / size))
+
+        output['descriptors'][letter].append(line)
+    
+    # Adiciona a coluna com o hash da sequencia
+    output['hash'].append(hash)
 
 # Imprimindo a saida
 max = len(output['descriptors']['g'])
 for i in range(max):
-	for k, v in output.items():
-		if (k=='hash'):
-			# Nao estou imprimindo o hash da sequencia
-			pass
-			#print(output['hash'][i], end = ' ')
-		else:
-			for letter in aminoacids:
-				lista = output['descriptors'][letter][i]
-				print(','.join(output['descriptors'][letter][i]), end=',')
+    for k, v in output.items():
+        if (k=='hash'):
+            # Nao estou imprimindo o hash da sequencia
+            pass
+            #print(output['hash'][i], end = ' ')
+        else:
+            for letter in aminoacids:
+                lista = output['descriptors'][letter][i]
+                print(','.join(output['descriptors'][letter][i]), end='')
 
-	print(strOrganism)
+    if (strOrganism != 'X'):
+        print("," + strOrganism)
+    else:
+        print("")
