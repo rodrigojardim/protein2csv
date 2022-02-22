@@ -197,7 +197,10 @@ for i in range(max):
         else:
             for letter in aminoacids:
                 lista = output['descriptors'][letter][i]
-                print(','.join(output['descriptors'][letter][i]), end='')
+                if (letter == 'g'):
+                	print(','.join(output['descriptors'][letter][i]), end='')
+                else:
+                	print(',' + ','.join(output['descriptors'][letter][i]), end='')
 
     if (strOrganism != 'X'):
         print("," + strOrganism)
